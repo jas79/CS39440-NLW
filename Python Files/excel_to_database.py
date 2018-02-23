@@ -19,21 +19,26 @@ class Ship:
         if self.check_key() is None:
             C.execute("""INSERT INTO vessels (idvessels, name, port_of_registry) VALUES (%s, %s, %s)""",
                       (self.key, self.name, self.port))
+            print_database()
 
     def fill_missing(self):
         print(self.to_string())
         if self.key == 0 and self.name is not 'Unknown':
             print(self.check_name())
-            self.key = self.check_name()[0]
+            if self.check_name() is not None:
+                self.key = self.check_name()[0]
 
         elif self.name is 'Unknown' and self.key != 0:
-            self.name = self.check_key()[1]
+            if self.check_key() is not None:
+                self.name = self.check_key()[1]
 
         if self.port is 'Unknown' and self.key != 0:
-            self.port = self.check_key()[2]
+            if self.check_key() is not None:
+                self.port = self.check_key()[2]
 
         elif self.port is 'Unknown' and self.name is not 'Unknown':
-            self.port = self.check_name()[2]
+            if self.check_name() is not None:
+                self.port = self.check_name()[2]
 
     def check_key(self):
         C.execute("""SELECT * FROM vessels WHERE idvessels = %s""", (self.key, ))
@@ -75,14 +80,12 @@ def file_reader(file):
                 ship.port = str(worksheet.cell_value(5, 5))
         except IndexError:
             break
-        if ship.name is 'Unknown' and ship.key == 0:
+        if ship.name is not 'Unknown' and ship.key != 0 and ship.port is not 'Unknown':
+            ship.add()
+        elif ship.name is 'Unknown' and ship.key == 0:
             ERROR_FILES.append(file)
         elif ship.name is 'Unknown' or ship.port is 'Unknown' or ship.key == 0:
             MISSING_DATA.append(ship)
-        else:
-            ship.add()
-
-        print_database()
 
 def print_database():
     C.execute("""SELECT * FROM vessels ORDER BY name ASC""")
@@ -94,7 +97,10 @@ PATH = '../ABERSHIP_transcription_vtls004566921'
 DB = MySQLdb.connect('db.dcs.aber.ac.uk', 'jas79', 'dragon00js', 'cs39440_17_18_jas79')
 C = DB.cursor()
 
+print("Begin Directory Search")
 directory_search(PATH)
+DB.commit()
+print("Directory Search Complete")
 
 for ship in MISSING_DATA:
     print(ship.to_string())
